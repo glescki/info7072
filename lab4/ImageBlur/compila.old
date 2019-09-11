@@ -1,0 +1,1 @@
+nvcc --compiler-bindir compilers ImageBlur.cu -o ImageBlur

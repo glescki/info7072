@@ -1,0 +1,32 @@
+INFO7072a: 2sem19 errata lab2
+
+Por favor desculpe se jah recebeu esse email,
+ou se jah resolveu esse problema no seu codigo do lab2,
+mas temos de verificar essas erratas:
+
+-------------------------------------------------------
+NO LAB2:
+
+o arquivo arquivo 
+lab2/ImageColorToGrayscale/run_tests
+foi mudado para comparar adequadamente os datasets
+(conforme especificado no PDF do lab2)
+ou seja, esse arquivo deve conter o script abaixo:
+
+./ImageColorToGrayScale -i Dataset/0/input.ppm -o  Dataset/0/output.pbm  
+./ImageColorToGrayScale -i Dataset/1/input.ppm -o  Dataset/1/output.pbm 
+./ImageColorToGrayScale -i Dataset/2/input.ppm -o  Dataset/2/output.pbm
+./ImageColorToGrayScale -i Dataset/3/input.ppm -o  Dataset/3/output.pbm
+./ImageColorToGrayScale -i Dataset/4/input.ppm -o  Dataset/4/output.pbm
+./ImageColorToGrayScale -i Dataset/5/input.ppm -o  Dataset/5/output.pbm
+./ImageColorToGrayScale -i Dataset/6/input.ppm -o  Dataset/6/output.pbm
+./ImageColorToGrayScale -i Dataset/7/input.ppm -o  Dataset/7/output.pbm
+./ImageColorToGrayScale -i Dataset/8/input.ppm -o  Dataset/8/output.pbm
+./ImageColorToGrayScale -i Dataset/9/input.ppm -o  Dataset/9/output.pbm
+-----------------------------------------------------------------------
+
+Se tiverem mais alguma errata favor me enviem que eu tentarei reportar 
+para a turma.
+
+att
+--Wagner

@@ -1,0 +1,1 @@
+nvcc --compiler-bindir compilers ImageColorToGrayScale.cu -o ImageColorToGrayScale
