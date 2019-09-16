@@ -117,35 +117,35 @@ __global__ void blurKernelSHM(unsigned int* in, unsigned int* out, int w, int h)
       
       if ( (tx >= BLUR_SIZE) && (ty >= BLUR_SIZE) && (tx < bdx - BLUR_SIZE) && (ty < bdy - BLUR_SIZE) )
       {
-        out[outputIdx] = tile[ty][tx]; 
-        /*   for(int blurRow = -BLUR_SIZE; blurRow < BLUR_SIZE + 1; ++blurRow) */
-        /*   { */
-        /*       for(int blurCol = -BLUR_SIZE; blurCol < BLUR_SIZE + 1; ++blurCol) */
-        /*       { */
-        /*           int curRow = ty + blurRow; */
-        /*           int curCol = tx + blurCol; */
-        /*  */
-        /*  */
-        /*           int globalRow = smRow + blurRow; */
-        /*           int globalCol = smCol + blurCol; */
-        /*          if (globalRow >= 0 && globalCol >= 0 && globalRow < w && globalCol < h)  */
-        /*          { */
-        /*           pixValR += ((tile[curRow][curCol] >> 16) & 0xff); */
-        /*           pixValG += ((tile[curRow][curCol] >> 8) & 0xff); */
-        /*           pixValB += (tile[curRow][curCol] & 0xff); */
-        /*  */
-        /*           pixels++; */
-        /*  */
-        /*          } */
-        /*       } */
-        /*   } */
-        /*  */
-        /* unsigned int r = pixValR / pixels; */
-        /* unsigned int g = pixValG / pixels; */
-        /* unsigned int b = pixValB / pixels; */
-        /* unsigned int pixelRGB = (r << 16) + (g << 8) + b; */
+        /* out[outputIdx] = tile[ty][tx];  */
+          for(int blurRow = -BLUR_SIZE; blurRow < BLUR_SIZE + 1; ++blurRow)
+          {
+              for(int blurCol = -BLUR_SIZE; blurCol < BLUR_SIZE + 1; ++blurCol)
+              {
+                  int curRow = ty + blurRow;
+                  int curCol = tx + blurCol;
 
-        /* out[outputIdx] = pixelRGB; */
+
+                  int globalRow = smRow + blurRow;
+                  int globalCol = smCol + blurCol;
+                 if (globalRow >= 0 && globalCol >= 0 && globalRow < h && globalCol < w)
+                 {
+                  pixValR += ((tile[curRow][curCol] >> 16) & 0xff);
+                  pixValG += ((tile[curRow][curCol] >> 8) & 0xff);
+                  pixValB += (tile[curRow][curCol] & 0xff);
+
+                  pixels++;
+
+                 }
+              }
+          }
+
+        unsigned int r = pixValR / pixels;
+        unsigned int g = pixValG / pixels;
+        unsigned int b = pixValB / pixels;
+        unsigned int pixelRGB = (r << 16) + (g << 8) + b;
+
+        out[outputIdx] = pixelRGB;
 
       }
   }
