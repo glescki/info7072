@@ -16,6 +16,7 @@
 #define BLUR_SIZE 5
 
 //@@ INSERT CODE HERE
+
 __global__ void blurKernel(unsigned char* in, unsigned char* out, int w, int h) 
 {
   int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -105,6 +106,7 @@ int main(int argc, char *argv[]) {
   int blockSize = 16;
   dim3 dimGrid((imageWidth-1)/blockSize + 1, (imageHeight-1)/blockSize+1, 1);
   dim3 dimBlock(blockSize, blockSize, 1);
+
   blurKernel<<<dimGrid,dimBlock>>>(deviceInputImageData, deviceOutputImageData, 
                                    imageWidth, imageHeight);
 

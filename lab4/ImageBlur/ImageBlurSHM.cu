@@ -37,25 +37,26 @@
   } while (0)
 
 #define BLUR_SIZE 5
-#define NTHx 32
-#define NTHy 32
-#define TILE_WIDTH 64 - 2*BLUR_SIZE
-#define TILE_HEIGHT 64 - 2*BLUR_SIZE
+#define NTHx 22
+#define NTHy 22
+#define TILE_WIDTH NTHx + (2*BLUR_SIZE)
+#define TILE_HEIGHT NTHy + (2*BLUR_SIZE)
 
 
 //@@ INSERT CODE HERE
+
 __global__ void rgb2uintKernelSHM(  unsigned int* argb, unsigned char* rgb, 
                                    int w, int h )
 {
   int x = blockIdx.x * blockDim.x + threadIdx.x;
   int y = blockIdx.y * blockDim.y + threadIdx.y;
-
+  
   if ( x < w && y < h )
   {
       int idx = y * w + x;
       unsigned char r = rgb[idx * 3];
       unsigned char g = rgb[idx * 3 + 1];
-      unsigned char b = rgb[idx * 2 + 2];
+      unsigned char b = rgb[idx * 3 + 2];
       unsigned int v = ((unsigned int)r << 16) + ((unsigned int)g << 8) + (unsigned int)b;
 
       argb[idx] = v;
@@ -71,76 +72,88 @@ __global__ void uint2rgbKernelSHM(  unsigned int* argb, unsigned char* rgb,
   if ( x < w && y < h )
   {
       int idx = y * w + x;
-      unsigned char r = (unsigned char) (argb[idx] >> 16 & 0xff);
-      unsigned char g = (unsigned char) (argb[idx] >> 8 & 0xff);
+    
+      unsigned char r = (unsigned char) ((argb[idx] >> 16) & 0xff);
+      unsigned char g = (unsigned char) ((argb[idx] >> 8) & 0xff);
       unsigned char b = (unsigned char) (argb[idx] & 0xff);
 
       rgb[idx * 3] = r;
       rgb[idx * 3 + 1] = g;
       rgb[idx * 3 + 2] = b;
+
   }
 }
 
-__global__ void blurKernelSHM(unsigned char* in, unsigned char* out, int w, int h) 
+__global__ void blurKernelSHM(unsigned int* in, unsigned int* out, int w, int h) 
 {
   int bx = blockIdx.x; int by = blockIdx.y;
   int tx = threadIdx.x; int ty = threadIdx.y;
+  int bdx = blockDim.x; int bdy = blockDim.y;
 
-  int Col = bx * blockDim.x + tx;
-  int Row = by * blockDim.y + ty;
+  int Row = by * (bdy - 2 * BLUR_SIZE) + ty;
+  int Col = bx * (bdx - 2 * BLUR_SIZE) + tx;
 
-  if (Col > h || Row > w)
-      return;
-   
-  const int tile_size = ( TILE_HEIGHT + 2*BLUR_SIZE ) * ( TILE_WIDTH + 2*BLUR_SIZE );
-  __shared__ unsigned char tile[ tile_size ];
-
-  int block_size = NTHx * NTHy;
-
-  for ( int i = 0; i < tile_size / block_size; ++i)
+  
+  if ((Row < h + BLUR_SIZE) && (Col < w + BLUR_SIZE))
   {
-    int tile_idx = (ty * blockDim.y + tx) + i * block_size;
-    /* tile[tile_idx] =  */
-  }
+      __shared__ unsigned int tile[TILE_HEIGHT][TILE_WIDTH];
 
-  /* if ( (Row < w && i * TILE_WIDTH + tx < w) || (Col < h && i * TILE_WIDTH + ty < h) ) */
-  /* { */
-      /* tile[ty][tx] = in[Row * w + ( i * TILE_WIDTH + tx )]; */
-  /* } */
-  /* else */
-  /* { */
-      /* tile[ty][tx] = 0.0; */
-  /* } */
-  /* __syncthreads(); */
+      int smRow = Row - BLUR_SIZE;
+      int smCol = Col - BLUR_SIZE;
 
-  int pixels = 0;
-  for(int blurRow = -BLUR_SIZE; blurRow < BLUR_SIZE + 1; ++blurRow)
-  {
-      for(int blurCol = -BLUR_SIZE; blurCol < BLUR_SIZE + 1; ++blurCol)
+      int outputIdx = smRow * w + smCol;
+      
+      if (( smRow >= 0 ) && ( smCol >= 0 ) && (smRow < h) && (smCol < w))
+          tile[ty][tx] = in[outputIdx];
+      else 
+          tile[ty][tx] = 0;
+
+      __syncthreads();
+
+      int pixels = 0;
+      unsigned int pixValR = 0;
+      unsigned int pixValG = 0;
+      unsigned int pixValB = 0;
+      
+      if ( (tx >= BLUR_SIZE) && (ty >= BLUR_SIZE) && (tx < bdx - BLUR_SIZE) && (ty < bdy - BLUR_SIZE) )
       {
-          int curRow = Row + blurRow;
-          int curCol = Col + blurCol;
+        out[outputIdx] = tile[ty][tx]; 
+        /*   for(int blurRow = -BLUR_SIZE; blurRow < BLUR_SIZE + 1; ++blurRow) */
+        /*   { */
+        /*       for(int blurCol = -BLUR_SIZE; blurCol < BLUR_SIZE + 1; ++blurCol) */
+        /*       { */
+        /*           int curRow = ty + blurRow; */
+        /*           int curCol = tx + blurCol; */
+        /*  */
+        /*  */
+        /*           int globalRow = smRow + blurRow; */
+        /*           int globalCol = smCol + blurCol; */
+        /*          if (globalRow >= 0 && globalCol >= 0 && globalRow < w && globalCol < h)  */
+        /*          { */
+        /*           pixValR += ((tile[curRow][curCol] >> 16) & 0xff); */
+        /*           pixValG += ((tile[curRow][curCol] >> 8) & 0xff); */
+        /*           pixValB += (tile[curRow][curCol] & 0xff); */
+        /*  */
+        /*           pixels++; */
+        /*  */
+        /*          } */
+        /*       } */
+        /*   } */
+        /*  */
+        /* unsigned int r = pixValR / pixels; */
+        /* unsigned int g = pixValG / pixels; */
+        /* unsigned int b = pixValB / pixels; */
+        /* unsigned int pixelRGB = (r << 16) + (g << 8) + b; */
 
-          if((curRow > -1) && (curRow < h) && (curCol > -1) && (curCol < w))
-          {
-              int idx = curRow * w + curCol;
-              unsigned char r = (unsigned char) (in[idx] >> 16 & 0xff);
-              unsigned char g = (unsigned char) (in[idx] >> 8 & 0xff);
-              unsigned char b = (unsigned char) (in[idx] & 0xff);
+        /* out[outputIdx] = pixelRGB; */
 
-              pixels++;
-          }
       }
   }
-
-  /* int idxR = (y * w + x) * 3; */
-  /* int idxG = (y * w + x) * 3 + 1; */
-  /* int idxB = (y * w + x) * 3 + 2; */
-  /* out[idxR] = (unsigned char)(pixValR/pixels); */
-  /* out[idxG] = (unsigned char)(pixValG/pixels); */
-  /* out[idxB] = (unsigned char)(pixValB/pixels); */
-
 }
+
+
+
+
 
 int main(int argc, char *argv[]) {
   wbArg_t args;
@@ -182,30 +195,42 @@ int main(int argc, char *argv[]) {
              imageWidth * imageHeight * sizeof(unsigned char) * 3);
  
   // argb format image (with pixels as int)
-  cudaMalloc((void **)&deviceInputImageData,
+  cudaMalloc((void **)&deviceInputImageData_argb,
              imageWidth * imageHeight * sizeof(unsigned int)); 
-  cudaMalloc((void **)&deviceOutputImageData,
+  cudaMalloc((void **)&deviceOutputImageData_argb,
              imageWidth * imageHeight * sizeof(unsigned int));
  
   wbTime_stop(GPU, "Doing GPU memory allocation");
 
   wbTime_start(Copy, "Copying data to the GPU");
- cudaMemcpy(deviceInputImageData, hostInputImageData,
+  
+  cudaMemcpy(deviceInputImageData, hostInputImageData,
             imageWidth * imageHeight * sizeof(unsigned char) * 3,
             cudaMemcpyHostToDevice);
 
   wbTime_stop(Copy, "Copying data to the GPU");
 
   ///////////////////////////////////////////////////////
-  wbTime_start(Compute, "Doing the computation on the GPU");
+  dim3 dimGrid((imageWidth-1)/NTHx + 1, (imageHeight-1)/NTHy+1, 1);
+  dim3 dimBlock(NTHx, NTHy, 1);
+  dim3 dimBlockBlur(TILE_WIDTH, TILE_HEIGHT, 1);
   
-  dim3 dimGrid((imageWidth-1)/NTHy + 1, (imageHeight-1)/NTHx+1, 1);
-  dim3 dimBlock(NTHy, NTHx, 1);
+  wbTime_start(Compute, "Doing the computation on the GPU");
 
 
-  blurKernelSHM<<<dimGrid,dimBlock>>>(deviceInputImageData, deviceOutputImageData,
-                                   imageWidth, imageHeight);
+  rgb2uintKernelSHM<<<dimGrid,dimBlock>>>(deviceInputImageData_argb,
+                                          deviceInputImageData,
+                                          imageWidth, imageHeight);
 
+  blurKernelSHM<<<dimGrid,dimBlockBlur>>>(deviceInputImageData_argb, 
+                                      deviceOutputImageData_argb,
+                                      imageWidth, imageHeight);
+
+  uint2rgbKernelSHM<<<dimGrid,dimBlock>>>(deviceOutputImageData_argb,
+                                          deviceOutputImageData,
+                                          imageWidth, imageHeight);
+  
+  
   wbTime_stop(Compute, "Doing the computation on the GPU");
 
   ///////////////////////////////////////////////////////
@@ -213,7 +238,6 @@ int main(int argc, char *argv[]) {
   cudaMemcpy(hostOutputImageData, deviceOutputImageData,
              imageWidth * imageHeight * sizeof(unsigned char) * 3,
              cudaMemcpyDeviceToHost);
-
   wbTime_stop(Copy, "Copying data from the GPU");
 
   wbTime_stop(GPU, "Doing GPU Computation (memory + compute)");
