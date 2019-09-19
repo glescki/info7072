@@ -1,0 +1,28 @@
+set title "Comparison between blur kernels (GTX750ti)" font ",14"
+# set label "N=[124346, 175852, 248692, 351704], NB=192, CPU freq=2.2, \nPxQ=[2x2, 2x4, 4x4, 4x8]" center at graph 0.5, char 2 font ",12"
+# set bmargin 6
+
+set ylabel "Time in μs"
+set xlabel "Images (10=sunflower, 11=Lena)"
+#set grid
+
+# set logscale y
+#set ytics 0,500,30000
+#set xrange[-1:12]
+#set xtics 0,1,11
+#set xtics rotate by -45
+
+#set style line 1 lc rgb 'blue' pt 7
+#set style line 2 lc rgb 'red' pt 7
+
+set style data histogram
+set style histogram clustered gap 1
+# set style fill solid border -1
+set boxwidth 1.0
+set xtic scale 0
+set style fill solid
+
+plot 'ImageBlur.dat' using ($2 * 1000000): xtic(1) with histogram title "ImageBlur (no shared memory)", \
+     'ImageBlurSHMC.dat' using ($2 * 1000000): xtic(1) with histogram title "ImageBlurSHM + layout transformation", \
+     'ImageBlurSHM.dat' using ($2 * 1000000): xtic(1) with histogram title "ImageBlurSHM only" 
+pause -1

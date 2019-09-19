@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
   ///////////////////////////////////////////////////////
   wbTime_start(Compute, "Doing the computation on the GPU");
   
-  int blockSize = 16;
+  int blockSize = 32;
   dim3 dimGrid((imageWidth-1)/blockSize + 1, (imageHeight-1)/blockSize+1, 1);
   dim3 dimBlock(blockSize, blockSize, 1);
 
@@ -125,7 +125,7 @@ int main(int argc, char *argv[]) {
   wbSolution(args, outputImage);
   // DEBUG: if you want to see your image, 
   //   will generate file bellow in current directory
-  wbExport( "blurred.ppm", outputImage );
+  /* wbExport( "blurred.ppm", outputImage ); */
 
   cudaFree(deviceInputImageData);
   cudaFree(deviceOutputImageData);

@@ -215,23 +215,23 @@ int main(int argc, char *argv[]) {
   dim3 dimBlock(NTHx, NTHy, 1);
   dim3 dimBlockBlur(TILE_WIDTH, TILE_HEIGHT, 1);
   
-  wbTime_start(Compute, "Doing the computation on the GPU");
 
 
   rgb2uintKernelSHM<<<dimGrid,dimBlock>>>(deviceInputImageData_argb,
                                           deviceInputImageData,
                                           imageWidth, imageHeight);
 
+  wbTime_start(Compute, "Doing the computation on the GPU");
   blurKernelSHM<<<dimGrid,dimBlockBlur>>>(deviceInputImageData_argb, 
                                       deviceOutputImageData_argb,
                                       imageWidth, imageHeight);
+  wbTime_stop(Compute, "Doing the computation on the GPU");
 
   uint2rgbKernelSHM<<<dimGrid,dimBlock>>>(deviceOutputImageData_argb,
                                           deviceOutputImageData,
                                           imageWidth, imageHeight);
   
   
-  wbTime_stop(Compute, "Doing the computation on the GPU");
 
   ///////////////////////////////////////////////////////
   wbTime_start(Copy, "Copying data from the GPU");
