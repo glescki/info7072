@@ -1,0 +1,7 @@
+mkdir compilers
+rm compilers/gcc
+rm compilers/g++
+ln -s /usr/bin/gcc-4.8 compilers/gcc
+ln -s /usr/bin/g++-4.8 compilers/g++
+echo "GNU compilers are set to..." 
+ls -la compilers
