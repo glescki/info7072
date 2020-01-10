@@ -1,125 +1,221 @@
-//
-//   v0.2 corrigida por WZola aug/2017 para ficar de acordo com novo wb.h 
-//        (ou seja de acordo com wb4.h)
-//        
+#include <iostream>
+#include <cstdlib>
+#include <unistd.h>
+#include <string>
 
-//#include <wb.h>     // original
-// DOWNLOAD wb4.h from the discipline site
-#include "./wb4.h" // use our new lib, wherever it is
-                                              
+using namespace std;
 
-#include <string.h>
+int GAP = -1, MATCH = 1, MISMATCH=-1;
+int WIDTH, HEIGHT;
 
-#define wbCheck(stmt)                                                     \
-  do {                                                                    \
-    cudaError_t err = stmt;                                               \
-    if (err != cudaSuccess) {                                             \
-      wbLog(ERROR, "Failed to run stmt ", #stmt);                         \
-      wbLog(ERROR, "Got CUDA error ...  ", cudaGetErrorString(err));      \
-      return -1;                                                          \
-    }                                                                     \
-  } while (0)
+int *M;
+#define M(i, j) (M[(i) * WIDTH + (j)])
 
-//@@ INSERT CODE HERE
-__global__ void colorConvert(unsigned char* grayImage,unsigned char* rgbImage,
-                             int width, int height, int channels)
+
+void printMatrix(string seq1, string seq2)
 {
-    int x =  threadIdx.x + blockIdx.x * blockDim.x;
-    int y =  threadIdx.y + blockIdx.y * blockDim.y;
-    
-    if(x < width && y < height)
-    {
-        int idx = y * width + x;
-        unsigned char r =  rgbImage[channels * idx]; // red value for pixel
-        unsigned char g =  rgbImage[channels * idx + 1]; // green value for pixel
-        unsigned char b =  rgbImage[channels * idx + 2]; // blue value for pixel
+    int seq1len = HEIGHT;
+    int seq2len = WIDTH;
 
-        grayImage[idx] = (0.21*r + 0.71*g + 0.07*b);
+    for(int i = 0; i < seq1len; ++i)
+    {
+        if ( i == 0 )
+        {
+            printf("\t\t");
+            for (int j = 0; j < seq2len; ++j)
+            {
+                printf("%c\t", seq2[j]);
+            }
+            printf("\n");
+        }
+
+        if (i == 0)
+            printf("\t");
+
+        if ( i >= 1 )
+            printf("%c\t", seq1[i-1]);
+        
+        for(int j = 0; j < seq2len; ++j)
+        {
+
+            if ((M(i, j) >= 0) || (M(i, j) >= 10))
+            {
+                printf(" %d\t", M(i, j));
+                continue;
+            }
+
+            printf("%d\t", M(i, j));
+
+        }
+        printf("\n");
     }
 }
 
-int main(int argc, char *argv[]) {
-  wbArg_t args;
-  int imageChannels;
-  int imageWidth;
-  int imageHeight;
-  char *inputImageFile;
-  wbImage_t inputImage;
-  wbImage_t outputImage;
 
-//  float *hostInputImageData;
-//  float *hostOutputImageData;
-//  float *deviceInputImageData;
-//  float *deviceOutputImageData;
+void initializeMatrix()
+{
+    int seq1len = HEIGHT;
+    int seq2len = WIDTH;
 
-  unsigned char *hostInputImageData;
-  unsigned char *hostOutputImageData;
-  unsigned char *deviceInputImageData;
-  unsigned char *deviceOutputImageData;
+    for(int i = 0; i < seq1len; ++i)
+    {
+        M(i, 0) = i == 0 ? 0 : i * (GAP);
+    }
 
-  args = wbArg_read(argc, argv); /* parse the input arguments */
-//  show_args( args ); // debug
+    for(int j = 0; j < seq2len; ++j)
+    {
 
-//  inputImageFile = wbArg_getInputFileName(args, 2);
-    inputImageFile = argv[2];
+        M(0, j) = j == 0 ? 0 : j * (GAP);
+    }
 
-//  inputImage = wbImportImage(inputImageFile);
-  inputImage = wbImport(inputImageFile);
+}
 
-  imageWidth  = wbImage_getWidth(inputImage);
-  imageHeight = wbImage_getHeight(inputImage);
-  // For this lab the value is always 3
-  imageChannels = wbImage_getChannels(inputImage);
+void traceback(string seq1, string seq2)
+{
+    int i = seq1.length();
+    int j = seq2.length();
 
-  // Since the image is monochromatic, it only contains one channel
-  outputImage = wbImage_new(imageWidth, imageHeight, 1);
+    string align = "";
+    string ref = "";
+    string v, w;
 
-  hostInputImageData  = wbImage_getData(inputImage);
-  hostOutputImageData = wbImage_getData(outputImage);
+    int scoreDiag;
 
-  wbTime_start(GPU, "Doing GPU Computation (memory + compute)");
+    while(i > 0 && j > 0)
+    {
+        v = seq1[i-1];
+        w = seq2[j-1];
 
-  wbTime_start(GPU, "Doing GPU memory allocation");
-  cudaMalloc((void **)&deviceInputImageData,
-             imageWidth * imageHeight * imageChannels);
-  cudaMalloc((void **)&deviceOutputImageData,
-             imageWidth * imageHeight);
-  wbTime_stop(GPU, "Doing GPU memory allocation");
+        if (seq1[i-1] == seq2[j-1])
+            scoreDiag = MATCH;
+        else
+            scoreDiag = MISMATCH;
 
-  wbTime_start(Copy, "Copying data to the GPU");
-  cudaMemcpy(deviceInputImageData, hostInputImageData,
-             imageWidth * imageHeight * imageChannels,
-             cudaMemcpyHostToDevice);
-  wbTime_stop(Copy, "Copying data to the GPU");
+        if (i > 0 && j > 0 && M(i, j) == M(i-1, j-1) + scoreDiag)
+        {
+            align = v + align;
+            ref = w + ref;
 
-  ///////////////////////////////////////////////////////
-  wbTime_start(Compute, "Doing the computation on the GPU");
-  //@@ INSERT CODE HERE
-  int blockSize = 5;
-  dim3 dimGrid((imageWidth-1)/blockSize + 1, (imageHeight-1)/blockSize+1, 1);
-  dim3 dimBlock(blockSize, blockSize, 1);
-  colorConvert<<<dimGrid,dimBlock>>>(deviceOutputImageData, deviceInputImageData, 
-                                   imageWidth, imageHeight, imageChannels);
+            i--;
+            j--;
+        }
+        else if (i > 0 && M(i, j) == M(i-1, j) + GAP)
+        {
+            align = v + align;
+            ref = "-" + ref;
 
-  
-  wbTime_stop(Compute, "Doing the computation on the GPU");
+            i--;
+        }
+        else if (j > 0 && M(i, j) == M(i, j-1) + GAP)
+        {
+            align = "-" + align;
+            ref = w + ref;
 
-  ///////////////////////////////////////////////////////
-  wbTime_start(Copy, "Copying data from the GPU");
-  cudaMemcpy(hostOutputImageData, deviceOutputImageData,
-             imageWidth * imageHeight,
-             cudaMemcpyDeviceToHost);
-  wbTime_stop(Copy, "Copying data from the GPU");
+            j--;
+        }
 
-  wbTime_stop(GPU, "Doing GPU Computation (memory + compute)");
+    }
 
-  wbSolution(args, outputImage);
 
-  cudaFree(deviceInputImageData);
-  cudaFree(deviceOutputImageData);
+    cout << align << endl;
+    cout << ref << endl;
 
-  wbImage_delete(outputImage);
-  wbImage_delete(inputImage);
+}
 
-  return 0;
+__global__ void needlemanKernel(int *M, char *seq1, char *seq2, int width, 
+                                int height, int MATCH, int MISMATCH, int GAP) 
+{
+	int i = blockIdx.y * blockDim.y + threadIdx.y;
+	int j = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if (i == 0 | j == 0 | i >= height | j >= width)
+		return;
+
+    int scoreDiag = 0;
+
+	if (seq1[i - 1] == seq2[j - 1]) 
+		scoreDiag = M[(i - 1) * width + (j - 1)] + MATCH;
+	else
+		scoreDiag = M[(i - 1) * width + (j - 1)] + MISMATCH;
+	
+	int scoreLeft = M[i * width + (j - 1)] + GAP;
+	int scoreUp = M[(i - 1) * width + j] + GAP;
+
+	M[i * width + j] = max(max(scoreDiag, scoreLeft), scoreUp);
+}
+
+
+int main(int argc, char *argv[])
+{
+    int c;
+    string seq1;    
+    string seq2;
+
+    if(argc < 1)
+    {
+        seq1 = "GAATTCAGTTA"; //First Sequence
+        seq2 = "GGATCGA"; //Second Sequence
+    }
+
+    while((c = getopt(argc, argv, ":r:")) != -1 ) 
+    {
+        switch(c)
+        {
+            case 'r':
+                seq1 = optarg;
+                break;
+            case '?':
+                printf("%c\n", optopt);
+                break;
+            default:
+                break;
+        }
+    }
+
+    for (int index = optind; index < argc; ++index)
+        seq2 = argv[index];
+         
+
+    HEIGHT = seq1.length() + 1;
+    WIDTH = seq2.length() + 1;
+    M = (int*) malloc(sizeof(int) * (WIDTH) * (HEIGHT));
+
+    initializeMatrix();
+
+    char hostSeq1[seq1.length()];
+    char hostSeq2[seq2.length()];
+
+    strcpy(hostSeq1, seq1.c_str());
+    strcpy(hostSeq2, seq2.c_str());
+
+    int *deviceM;
+    char *deviceSeq1;
+    char *deviceSeq2;
+    
+    cudaMalloc((void *)&deviceM, WIDTH * HEIGHT * sizeof(int));
+    cudaMalloc(&deviceSeq1, seq1.length());
+    cudaMalloc(&deviceSeq2, seq2.length());
+
+    cudaMemcpy(deviceM, M, WIDTH * HEIGHT * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(deviceSeq1, hostSeq1, WIDTH * HEIGHT, cudaMemcpyHostToDevice);
+    cudaMemcpy(deviceSeq2, hostSeq2, WIDTH * HEIGHT, cudaMemcpyHostToDevice);
+
+    int blockSize = 32;                                                           
+    dim3 dimGrid((WIDTH-1)/blockSize + 1, (HEIGHT-1)/blockSize+1, 1);   
+    dim3 dimBlock(blockSize, blockSize, 1);                                       
+                                                                                
+    needlemanKernel<<<dimGrid,dimBlock>>>(deviceM, deviceSeq1, deviceSeq2, WIDTH,
+                                          HEIGHT, MATCH, MISMATCH, GAP);   
+
+    cudaMemcpy(M, deviceM, WIDTH * HEIGHT * sizeof(int), cudaMemcpyDeviceToHost);
+    
+    cudaFree(deviceM);
+    cudaFree(deviceSeq1);
+    cudaFree(deviceSeq2);
+
+    // traceback(seq1, seq2);
+
+    free(M);
+
+    return 0;
 }
