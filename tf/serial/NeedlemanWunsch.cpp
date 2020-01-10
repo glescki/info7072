@@ -1,17 +1,18 @@
 #include <iostream>
 #include <cstdlib>
+#include <unistd.h>
 #include <string>
 
 using namespace std;
 
-int GAP = -2, MATCH = 2, MISSMATCH=-1;
+int GAP = -1, MATCH = 1, MISSMATCH=-1;
 int WIDTH, HEIGHT;
 
 int *M;
 #define M(i, j) (M[(i) * WIDTH + (j)])
 
 
-int printMatrix(string seq1, string seq2)
+void printMatrix(string seq1, string seq2)
 {
     int seq1len = HEIGHT;
     int seq2len = WIDTH;
@@ -50,7 +51,7 @@ int printMatrix(string seq1, string seq2)
     }
 }
 
-int scoreMatrix(string seq1, string seq2)
+void scoreMatrix(string seq1, string seq2)
 {
     int seq1len = HEIGHT;
     int seq2len = WIDTH;
@@ -77,7 +78,7 @@ int scoreMatrix(string seq1, string seq2)
     }
 }
 
-int initializeMatrix(string seq1, string seq2)
+void initializeMatrix()
 {
     int seq1len = HEIGHT;
     int seq2len = WIDTH;
@@ -95,7 +96,7 @@ int initializeMatrix(string seq1, string seq2)
 
 }
 
-int traceback(string seq1, string seq2)
+void traceback(string seq1, string seq2)
 {
     int i = seq1.length();
     int j = seq2.length();
@@ -151,21 +152,45 @@ int traceback(string seq1, string seq2)
 int main(int argc, char *argv[])
 {
 
-    string seq1("GAATTCAGTTA"); //First Sequence
-    string seq2("GGATCGA"); //Second Sequence
+    if(argc < 1)
+    {
+        string seq1("GAATTCAGTTA"); //First Sequence
+        string seq2("GGATCGA"); //Second Sequence
+    }
+
+    int c;
+    string seq1;
+    string seq2;
+
+    while((c = getopt(argc, argv, ":r:")) != -1 ) 
+    {
+        switch(c)
+        {
+            case 'r':
+                seq1 = optarg;
+                break;
+            case '?':
+                printf("%c\n", optopt);
+                break;
+            default:
+                break;
+        }
+    }
+
+    for (int index = optind; index < argc; ++index)
+        seq2 = argv[index];
+         
 
     HEIGHT = seq1.length() + 1;
     WIDTH = seq2.length() + 1;
     M = (int*) malloc(sizeof(int) * (WIDTH) * (HEIGHT));
 
-    initializeMatrix(seq1, seq2);
+    initializeMatrix();
 
     scoreMatrix(seq1, seq2);
 
-    printMatrix(seq1, seq2);
-
     traceback(seq1, seq2);
-   
+
     free(M);
 
 
