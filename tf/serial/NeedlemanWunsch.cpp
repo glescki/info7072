@@ -189,6 +189,7 @@ int main(int argc, char *argv[])
 
     scoreMatrix(seq1, seq2);
 
+    // printMatrix(seq1, seq2);
     traceback(seq1, seq2);
 
     free(M);

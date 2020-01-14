@@ -122,26 +122,44 @@ void traceback(string seq1, string seq2)
 
 }
 
-__global__ void needlemanKernel(int *M, char *seq1, char *seq2, int width, 
-                                int height, int MATCH, int MISMATCH, int GAP) 
+__global__ void needlemanKernel(int *devM, char *seq1, char *seq2, int width, 
+                                int height, int MATCH, int MISMATCH, int GAP, int k) 
 {
-	int i = blockIdx.y * blockDim.y + threadIdx.y;
-	int j = blockIdx.x * blockDim.x + threadIdx.x;
 
-	if (i == 0 | j == 0 | i >= height | j >= width)
-		return;
+    int bx = blockIdx.x; int by = blockIdx.y;
+    int tx = threadIdx.x; int ty = threadIdx.y;
+    int bdx = blockDim.x; int bdy = blockDim.y;
+	// int i = blockIdx.y * blockDim.y + threadIdx.y;
+	// int j = blockIdx.x * blockDim.x + threadIdx.x;
+
+    int i = by * bdx + tx;
+    int j = -i + width - (width - 2) + k;
+
+
+    if (i >= height || i <= 0 || j >= width || j <= 0)
+        return;
+
 
     int scoreDiag = 0;
 
-	if (seq1[i - 1] == seq2[j - 1]) 
-		scoreDiag = M[(i - 1) * width + (j - 1)] + MATCH;
-	else
-		scoreDiag = M[(i - 1) * width + (j - 1)] + MISMATCH;
-	
-	int scoreLeft = M[i * width + (j - 1)] + GAP;
-	int scoreUp = M[(i - 1) * width + j] + GAP;
+    if (seq1[i - 1] == seq2[j - 1])
+        scoreDiag = devM[(i - 1) * width + (j - 1)] + MATCH;
+    else
+    {
+        // printf("%d, %d\n", i, j);
+        //
+        // printf("%c %c", seq1[i-1], seq2[j-1]);
+        // printf("\n");
+        scoreDiag = devM[(i - 1) * width + (j - 1)] + MISMATCH;
 
-	M[i * width + j] = max(max(scoreDiag, scoreLeft), scoreUp);
+    }
+
+    int scoreLeft = devM[i * width + (j - 1)] + GAP;
+    int scoreUp = devM[(i - 1) * width + j] + GAP;
+
+    devM[i * width + j] = max(max(scoreDiag, scoreLeft), scoreUp);
+
+    __syncthreads();
 }
 
 
@@ -192,28 +210,36 @@ int main(int argc, char *argv[])
     char *deviceSeq1;
     char *deviceSeq2;
     
-    cudaMalloc((void *)&deviceM, WIDTH * HEIGHT * sizeof(int));
+    cudaMalloc(&deviceM, WIDTH * HEIGHT * sizeof(int));
     cudaMalloc(&deviceSeq1, seq1.length());
     cudaMalloc(&deviceSeq2, seq2.length());
 
     cudaMemcpy(deviceM, M, WIDTH * HEIGHT * sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(deviceSeq1, hostSeq1, WIDTH * HEIGHT, cudaMemcpyHostToDevice);
-    cudaMemcpy(deviceSeq2, hostSeq2, WIDTH * HEIGHT, cudaMemcpyHostToDevice);
+    cudaMemcpy(deviceSeq1, hostSeq1, seq1.length(), cudaMemcpyHostToDevice);
+    cudaMemcpy(deviceSeq2, hostSeq2, seq2.length(), cudaMemcpyHostToDevice);
 
     int blockSize = 32;                                                           
-    dim3 dimGrid((WIDTH-1)/blockSize + 1, (HEIGHT-1)/blockSize+1, 1);   
-    dim3 dimBlock(blockSize, blockSize, 1);                                       
-                                                                                
-    needlemanKernel<<<dimGrid,dimBlock>>>(deviceM, deviceSeq1, deviceSeq2, WIDTH,
-                                          HEIGHT, MATCH, MISMATCH, GAP);   
 
+    int nThreads = 6;
+    
+    dim3 dimGrid(1, (HEIGHT-1)/nThreads+1, 1);   
+    dim3 dimBlock(nThreads, 1, 1);                                       
+                                                                                
+    for(int k = 0; k < (WIDTH + HEIGHT) - 1; ++k)
+    {
+        needlemanKernel<<<dimGrid,dimBlock>>>(deviceM, deviceSeq1, deviceSeq2,
+                                              WIDTH, HEIGHT, MATCH, MISMATCH, GAP,
+                                              k);
+    }
     cudaMemcpy(M, deviceM, WIDTH * HEIGHT * sizeof(int), cudaMemcpyDeviceToHost);
     
     cudaFree(deviceM);
     cudaFree(deviceSeq1);
     cudaFree(deviceSeq2);
 
-    // traceback(seq1, seq2);
+    
+    // printMatrix(seq1, seq2);
+    traceback(seq1, seq2);
 
     free(M);
 
