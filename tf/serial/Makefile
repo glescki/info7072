@@ -12,4 +12,4 @@ clean:
 	rm -rf NeedlemanWunsch
 
 test:
-	./NeedlemanWunsch GGATCGA -r GAATTCAGTTA
+	./NeedlemanWunsch AAAAAAAAAA -r AAAGAATTAAAAAACAGTTA

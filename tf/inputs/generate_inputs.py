@@ -26,7 +26,7 @@ for i in n:
 
     np.savetxt(output_file, align, newline="", fmt='%s')
 
-    m = randint(i * 0.1, i + 1, size=4)
+    m = randint(i * 0.6, i + 1, size=9)
 
     for j in m:
         align = choice(nt, j, p=pr)

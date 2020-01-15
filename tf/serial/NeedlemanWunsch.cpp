@@ -1,7 +1,9 @@
 #include <iostream>
 #include <cstdlib>
 #include <unistd.h>
-#include <string>
+#include <cstring>
+#include <ctime>
+#include <chrono>
 
 using namespace std;
 
@@ -10,6 +12,7 @@ int WIDTH, HEIGHT;
 
 int *M;
 #define M(i, j) (M[(i) * WIDTH + (j)])
+
 
 
 void printMatrix(string seq1, string seq2)
@@ -101,8 +104,8 @@ void traceback(string seq1, string seq2)
     int i = seq1.length();
     int j = seq2.length();
 
-    string align = "";
-    string ref = "";
+    string align = " ";
+    string ref = " ";
     string v, w;
 
     int scoreDiag;
@@ -142,12 +145,50 @@ void traceback(string seq1, string seq2)
 
     }
 
-
-    cout << align << endl;
-    cout << ref << endl;
+    // cout << align << endl;
+    // cout << ref << endl;
 
 }
 
+
+string genseq(int size)
+{
+    string sequence = "";
+    int r;
+
+    srand(time(NULL));
+
+    for(int i=0; i<size; ++i)
+    {
+        r = rand() % 10;
+
+        if(r < 3)
+        {
+            sequence = sequence + "A";
+            continue;
+        }
+
+        if(r < 6)
+        {
+            sequence = sequence + "T";
+            continue;
+        }
+
+        if(r < 8)
+        {
+            sequence = sequence + "C";
+            continue;
+        }
+
+        if(r < 10)
+        {
+            sequence = sequence + "G";
+            continue;
+        }
+    }
+
+    return sequence;
+}
 
 int main(int argc, char *argv[])
 {
@@ -179,7 +220,12 @@ int main(int argc, char *argv[])
 
     for (int index = optind; index < argc; ++index)
         seq2 = argv[index];
-         
+    
+    if(seq2.length() < 1)
+    {
+        cout << "Error: align sequence not in the input" << endl;
+        return -1;
+    }
 
     HEIGHT = seq1.length() + 1;
     WIDTH = seq2.length() + 1;
@@ -187,10 +233,16 @@ int main(int argc, char *argv[])
 
     initializeMatrix();
 
+    auto t1 = chrono::high_resolution_clock::now();
     scoreMatrix(seq1, seq2);
+    auto t2 = chrono::high_resolution_clock::now();
 
-    // printMatrix(seq1, seq2);
-    traceback(seq1, seq2);
+    auto duration = chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
+
+    
+    cout << duration << endl;
+
+    // traceback(seq1, seq2);
 
     free(M);
 

@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <unistd.h>
 #include <string>
+#include <chrono>
 
 using namespace std;
 
@@ -225,12 +226,20 @@ int main(int argc, char *argv[])
     dim3 dimGrid(1, (HEIGHT-1)/nThreads+1, 1);   
     dim3 dimBlock(nThreads, 1, 1);                                       
                                                                                 
+    auto t1 = chrono::high_resolution_clock::now();
+
     for(int k = 0; k < (WIDTH + HEIGHT) - 1; ++k)
     {
         needlemanKernel<<<dimGrid,dimBlock>>>(deviceM, deviceSeq1, deviceSeq2,
                                               WIDTH, HEIGHT, MATCH, MISMATCH, GAP,
                                               k);
     }
+
+    auto t2 = chrono::high_resolution_clock::now();
+    auto duration = chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
+
+    cout << duration << endl;  
+
     cudaMemcpy(M, deviceM, WIDTH * HEIGHT * sizeof(int), cudaMemcpyDeviceToHost);
     
     cudaFree(deviceM);
@@ -239,7 +248,7 @@ int main(int argc, char *argv[])
 
     
     // printMatrix(seq1, seq2);
-    traceback(seq1, seq2);
+    // traceback(seq1, seq2);
 
     free(M);
 
