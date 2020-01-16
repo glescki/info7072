@@ -29,7 +29,7 @@ set y2tics
 
 set key opaque top left
 
-# set terminal png
+# set terminal png size 1000,500
 # set output 'fig.png'
 
 plot 'gpu.dat' u ($2 / 1000): xtic(1) w histogram ls 2 t "GPU" axis x1y1, \
@@ -37,3 +37,4 @@ plot 'gpu.dat' u ($2 / 1000): xtic(1) w histogram ls 2 t "GPU" axis x1y1, \
      'speedup.dat' u 2 w linespoint ls 1 t "Speedup" axis x1y2
 
 pause -1
+# quit
