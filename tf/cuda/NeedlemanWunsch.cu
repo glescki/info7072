@@ -127,11 +127,9 @@ __global__ void needlemanKernel(int *devM, char *seq1, char *seq2, int width,
                                 int height, int MATCH, int MISMATCH, int GAP, int k) 
 {
 
-    int bx = blockIdx.x; int by = blockIdx.y;
-    int tx = threadIdx.x; int ty = threadIdx.y;
-    int bdx = blockDim.x; int bdy = blockDim.y;
-	// int i = blockIdx.y * blockDim.y + threadIdx.y;
-	// int j = blockIdx.x * blockDim.x + threadIdx.x;
+    int by = blockIdx.y;
+    int tx = threadIdx.x;
+    int bdx = blockDim.x;
 
     int i = by * bdx + tx;
     int j = -i + width - (width - 2) + k;
@@ -219,12 +217,10 @@ int main(int argc, char *argv[])
     cudaMemcpy(deviceSeq1, hostSeq1, seq1.length(), cudaMemcpyHostToDevice);
     cudaMemcpy(deviceSeq2, hostSeq2, seq2.length(), cudaMemcpyHostToDevice);
 
-    int blockSize = 32;                                                           
-
-    int nThreads = 6;
+    int nThreads = 1024;
     
     dim3 dimGrid(1, (HEIGHT-1)/nThreads+1, 1);   
-    dim3 dimBlock(nThreads, 1, 1);                                       
+    dim3 dimBlock(HEIGHT, 1, 1);                                       
                                                                                 
     auto t1 = chrono::high_resolution_clock::now();
 
